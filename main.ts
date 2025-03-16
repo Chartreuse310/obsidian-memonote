@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, ItemView, WorkspaceLeaf,} from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
@@ -36,6 +36,7 @@ export default class MyPlugin extends Plugin {
 				new SampleModal(this.app).open();
 			}
 		});
+
 		// 替换选中文字
 		this.addCommand({
 			id: 'sample-replace-text',
@@ -45,6 +46,7 @@ export default class MyPlugin extends Plugin {
 				editor.replaceSelection('ヾ(≧▽≦*)o');
 			}
 		});
+
 		// This adds a complex command that can check whether the current state of the app allows execution of the command
 		this.addCommand({
 			id: 'open-sample-modal-complex',
@@ -76,7 +78,40 @@ export default class MyPlugin extends Plugin {
 
 		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
 		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
+
+		//右键菜单扩展
+		this.registerEvent(
+			app.workspace.on("editor-menu", (menu, editor, view) => {
+			  if (editor.somethingSelected()) {
+				menu.addItem((item) => {
+				  item.setTitle("Comment")
+					.setIcon("comment")
+					.onClick(() => {
+					  // 调用后续处理函数
+					  // this.createCommentCard(editor);
+					  new Notice('MemoNote Created!'); //测试调用效果
+					});
+				});
+			  }
+			})
+		  );
+
+		//侧边栏面板
+		this.registerView("comment-panel", (leaf) => new CommentPanel(leaf));
+
+		//切换侧边栏显示
+		this.addRibbonIcon("chat", "打开评论面板", () => {
+		this.app.workspace.getRightLeaf(false).setViewState({
+			type: "comment-panel",
+			active: true,
+		});
+		});
+
+		  
+		  
 	}
+
+	
 
 	onunload() {
 
@@ -90,6 +125,75 @@ export default class MyPlugin extends Plugin {
 		await this.saveData(this.settings);
 	}
 }
+
+import { ItemView, WorkspaceLeaf, Notice } from "obsidian";
+
+export class CommentPanel extends ItemView {
+  getViewType(): string {
+    return "comment-panel";
+  }
+  getDisplayText(): string {
+    return "评论面板";
+  }
+  async onOpen(): Promise<void> {
+    this.containerEl.empty();
+    // 获取当前激活文件
+    const activeFile = this.app.workspace.getActiveFile();
+    if (!activeFile) {
+      this.containerEl.createEl("div", { text: "当前无激活文件" });
+      return;
+    }
+    // 读取文件内容
+    const content = await this.app.vault.read(activeFile);
+    // 解析高亮文本和脚注，假设只处理一个评论示例
+    const highlightRegex = /==([^=]+)==\s+\[\^([^\]]+)\]/;
+    const match = content.match(highlightRegex);
+    if (!match) {
+      this.containerEl.createEl("div", { text: "未找到评论信息" });
+      return;
+    }
+    const highlightedText = match[1].trim();
+    const cardId = match[2].trim();
+
+    // 根据cardId查找对应脚注内容
+    const footnoteRegex = new RegExp(`\\[\\^${cardId}\\]:\\s*(.*)`);
+    const footnoteMatch = content.match(footnoteRegex);
+    let commentText = "";
+    if (footnoteMatch) {
+      commentText = footnoteMatch[1].trim();
+    } else {
+      new Notice(`未找到与 ${cardId} 对应的脚注`);
+    }
+
+    // 构建侧边栏界面，整体为一个大框，内部分为两个框
+    const container = this.containerEl.createDiv("comment-container", (div) => {
+      div.style.border = "1px solid #ccc";
+      div.style.padding = "10px";
+      div.style.margin = "10px 0";
+      div.style.borderRadius = "4px";
+      div.style.backgroundColor = "#f9f9f9";
+    });
+    // 第一个框：显示高亮文本
+    const textBox = container.createDiv("comment-text", (div) => {
+      div.style.fontWeight = "bold";
+      div.style.marginBottom = "5px";
+    });
+    textBox.setText(highlightedText);
+
+    // 第二个框：显示评论内容
+    const commentBox = container.createDiv("comment-content", (div) => {
+      div.style.padding = "5px";
+      div.style.borderTop = "1px solid #ddd";
+      div.style.marginTop = "5px";
+    });
+    commentBox.setText(commentText);
+  }
+  async onClose(): Promise<void> {
+    // 可在此清理资源
+  }
+}
+
+
 
 class SampleModal extends Modal {
 	constructor(app: App) {
