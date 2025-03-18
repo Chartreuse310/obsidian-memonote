@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-memonote",
-	"version": "0.0.1",
+	"version": "0.2.1",
 	"description": "Create note with highlight and convert into memory card.",
 	"main": "main.js",
 	"scripts": {

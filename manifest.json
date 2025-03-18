@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-memonote",
 	"name": "MemoNote",
-	"version": "0.0.1",
+	"version": "0.2.1",
 	"minAppVersion": "0.15.0",
 	"description": "Create note with highlight and convert into memory card.",
 	"author": "Chartreuse310",
